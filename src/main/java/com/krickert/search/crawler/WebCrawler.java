@@ -17,29 +17,34 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 @Singleton
 public class WebCrawler {
     private static final Logger log = LoggerFactory.getLogger(WebCrawler.class);
 
     private final WebDriver driver;
-    private Set<String> visitedUrls = new HashSet<>();
+    private final Set<String> visitedUrls = new HashSet<>();
 
-    private Map<String,String> data = Maps.newConcurrentMap();
+    private final Map<String,String> data = Maps.newConcurrentMap();
 
     public WebCrawler(ResourceResolver resourceResolver) {
+        Optional<URL> resource = resourceResolver.getLoader(ClassPathResourceLoader.class).flatMap(loader -> loader
+                .getResource("ublock_CJPALHDLNBPAFIAMEJDNHCPHJBKEIAGM_1_54_0_0.crx"));
 
-        Optional<URL> resource = resourceResolver.getLoader(ClassPathResourceLoader.class).get().getResource("ublock_CJPALHDLNBPAFIAMEJDNHCPHJBKEIAGM_1_54_0_0.crx");
-        WebDriverManager.chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
+        if (resource.isPresent()) {
+            WebDriverManager.chromedriver().setup();
+            ChromeOptions options = new ChromeOptions();
 
-        options.addExtensions(new File(resource.get().getFile()));
-        options.addArguments("--headless=new");
+            options.addExtensions(new File(resource.get().getFile()));
+            options.addArguments("--headless=new");
 
-        driver = new ChromeDriver(options);
-        driver.manage().timeouts().implicitlyWait(8, TimeUnit.SECONDS);
-        driver.manage().timeouts().setScriptTimeout(3, TimeUnit.SECONDS);
+            driver = new ChromeDriver(options);
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(8));
+            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(3));
+        } else {
+            throw new RuntimeException("Resource not found: ublock_CJPALHDLNBPAFIAMEJDNHCPHJBKEIAGM_1_54_0_0.crx");
+        }
     }
 
     public void start(String url) {
